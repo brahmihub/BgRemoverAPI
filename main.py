@@ -45,5 +45,5 @@ async def root():
     return {"message": "Welcome to the Background Removal API!"}
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))  # Use PORT environment variable
+    port = int(os.environ.get("PORT", 4000))  # Use PORT environment variable
     uvicorn.run(app, host="0.0.0.0", port=port)
