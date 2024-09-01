@@ -1,49 +1,41 @@
-import os
-import io
-import uvicorn
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
 from rembg import remove
 from PIL import Image
+import io
 
 app = FastAPI()
 
 @app.post("/remove-bg/")
 async def remove_background(file: UploadFile = File(...)):
-    # Ensure file is an image
-    if not file.content_type.startswith('image/'):
-        raise HTTPException(status_code=400, detail="File must be an image.")
-    
     try:
+        if file is None or file.content_type is None:
+            raise HTTPException(status_code=400, detail="Invalid file or content type")
+        
+        # Ensure the file is an image
+        if not file.content_type.startswith("image/"):
+            raise HTTPException(status_code=400, detail="File must be an image")
+
         # Read image data
         image_bytes = await file.read()
         input_image = Image.open(io.BytesIO(image_bytes))
 
-        # Ensure image is in a valid format
+        # Ensure the image is in RGBA format
         if input_image.mode != "RGBA":
             input_image = input_image.convert("RGBA")
 
-        # Remove background using rembg
+        # Remove the background
         output_image = remove(image_bytes)
 
-        # Convert processed image back to PIL format
+        # Convert back to a PIL image
         output_image = Image.open(io.BytesIO(output_image))
 
-        # Save processed image to buffer
+        # Save the processed image to a buffer
         buffer = io.BytesIO()
         output_image.save(buffer, format="PNG")
         buffer.seek(0)
 
-        # Return the processed image as a response
         return StreamingResponse(buffer, media_type="image/png")
-
+    
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/")
-async def root():
-    return {"message": "Welcome to the Background Removal API!"}
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 0))  # Default to a random port if not provided
-    uvicorn.run(app, host="0.0.0.0", port=port)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
